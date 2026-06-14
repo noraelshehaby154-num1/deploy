@@ -33,7 +33,7 @@ with st.sidebar:
     mode = st.radio("Choose Mode", ["Single Application", "Portfolio Analytics"])
 
 col_a, col_b = st.columns([1, 1])
-
+ 
 with col_a:
     st.subheader("👤 Customer Profile")
     income = st.number_input("Annual Income ($)", min_value=100000, max_value=20000000, value=5000000, step=100000, format="%d")
