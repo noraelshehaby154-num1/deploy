@@ -78,32 +78,220 @@ if analyze:
         r3 = agent3.run(r1, r2, customer_payload) # 3. Marketing Offers
 
         st.divider()
-        st.subheader("📊 Decision & Risk Analysis (Multi-Agent Output)")
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Decision", r2.get("decision", "N/A"))
+        # ===== KPI DASHBOARD =====
+        st.subheader("📊 Executive Summary - Key Metrics")
         
-        proba = r2.get("approval_probability", 0.0)
-        m2.metric("Approval Probability", f"{proba:.1%}")
-        m3.metric("Risk Score", f"{r2.get('risk_score', 0)}/100")
-        m4.metric("Segment", r1.get("segment", "N/A"))
-
-        # طباعة التفسير النصي التلقائي للأيجنت الأول
-        st.info(f"**Agent Interpretation:** {r1.get('interpretation', '')}")
-
-        # عرض تفاصيل العرض التسويقي المخصص
-        st.subheader("📣 Personalized Campaign Recommendation")
-        st.success(f"**🎯 Campaign Title:** {r3.get('campaign_title', 'N/A')}")
+        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
         
-        c_col1, c_col2 = st.columns(2)
-        with c_col1:
-            st.write(f"**Offer Product:** {r3.get('offer_type', 'N/A')}")
-            st.write(f"**Interest Rate:** {r3.get('interest_rate_band', 'N/A')}")
-        with c_col2:
-            off_amt = r3.get('offer_amount')
-            st.write(f"**Max Approved Offer Amount:** ${off_amt:,.2f}" if off_amt else "**Max Approved Offer Amount:** N/A")
-            st.write(f"**Next Recommended Action:** `{r3.get('next_action', 'N/A')}`")
+        with kpi_col1:
+            decision_color = "🟢" if r2.get("decision") == "APPROVED" else "🔴"
+            st.metric("✅ Decision", r2.get("decision", "N/A"))
+        
+        with kpi_col2:
+            proba = r2.get("approval_probability", 0.0)
+            st.metric("📈 Approval Probability", f"{proba:.1%}")
+        
+        with kpi_col3:
+            risk_score = r2.get('risk_score', 0)
+            st.metric("⚠️ Risk Score", f"{risk_score}/100")
+        
+        with kpi_col4:
+            st.metric("🏷️ Customer Segment", r1.get("segment", "N/A"))
 
-        st.markdown("**Key Product Benefits Included:**")
-        for benefit in r3.get("key_benefits", []):
-            st.markdown(f" * {benefit}")
+        st.divider()
+
+        # ===== TABBED VIEW FOR AGENTS =====
+        tab1, tab2, tab3, tab4 = st.tabs(
+            ["🔍 Agent 1: Segmentation", "⚡ Agent 2: Decision", "🎯 Agent 3: Marketing", "📋 Full Report"]
+        )
+
+        # ===== TAB 1: SEGMENTATION AGENT =====
+        with tab1:
+            st.subheader("Customer Segmentation Analysis")
+            st.info(f"**📝 Interpretation:** {r1.get('interpretation', 'N/A')}")
+            
+            seg_col1, seg_col2, seg_col3 = st.columns(3)
+            with seg_col1:
+                st.metric("Customer Segment", r1.get("segment", "N/A"))
+            with seg_col2:
+                st.metric("CIBIL Band", r1.get("cibil_band", "N/A"))
+            with seg_col3:
+                st.metric("Loan-to-Income Ratio", f"{r1.get('loan_to_income_ratio', 0):.2f}×")
+            
+            # عرض بيانات التقسيم
+            st.subheader("Segmentation Details")
+            seg_data = {
+                "Metric": [
+                    "Customer Segment",
+                    "Cluster ID",
+                    "CIBIL Score Band",
+                    "Loan-to-Income Ratio",
+                ],
+                "Value": [
+                    r1.get("segment", "N/A"),
+                    r1.get("cluster_id", "N/A"),
+                    r1.get("cibil_band", "N/A"),
+                    f"{r1.get('loan_to_income_ratio', 0):.2f}",
+                ]
+            }
+            st.dataframe(pd.DataFrame(seg_data), use_container_width=True)
+
+        # ===== TAB 2: DECISION AGENT =====
+        with tab2:
+            st.subheader("Loan Decision & Risk Assessment")
+            
+            dec_col1, dec_col2, dec_col3 = st.columns(3)
+            with dec_col1:
+                decision = r2.get("decision", "N/A")
+                color = "green" if decision == "APPROVED" else "red"
+                st.metric("Final Decision", decision)
+            with dec_col2:
+                confidence = r2.get("confidence", "N/A")
+                st.metric("Confidence Level", confidence)
+            with dec_col3:
+                flag = "⚠️ Yes" if r2.get("flag_manual_review", False) else "✅ No"
+                st.metric("Manual Review Required", flag)
+            
+            # تفاصيل القرار
+            st.subheader("Decision Metrics")
+            decision_data = {
+                "Metric": [
+                    "Decision Status",
+                    "Approval Probability",
+                    "Risk Score (0-100)",
+                    "Confidence Level",
+                    "Predicted Loan Amount",
+                    "Requested Loan Amount",
+                    "Manual Review Flag",
+                ],
+                "Value": [
+                    r2.get("decision", "N/A"),
+                    f"{r2.get('approval_probability', 0):.1%}",
+                    f"{r2.get('risk_score', 0)}/100",
+                    r2.get("confidence", "N/A"),
+                    f"${r2.get('predicted_loan_amount', 0):,.0f}",
+                    f"${r2.get('requested_loan_amount', 0):,.0f}",
+                    "Yes" if r2.get("flag_manual_review", False) else "No",
+                ]
+            }
+            st.dataframe(pd.DataFrame(decision_data), use_container_width=True)
+
+        # ===== TAB 3: MARKETING CAMPAIGN AGENT =====
+        with tab3:
+            st.subheader("📣 Personalized Campaign Recommendation")
+            
+            st.success(f"**🎯 Campaign Title:** {r3.get('campaign_title', 'N/A')}")
+            
+            camp_col1, camp_col2 = st.columns(2)
+            with camp_col1:
+                st.write(f"**📦 Offer Type:** {r3.get('offer_type', 'N/A')}")
+                st.write(f"**💰 Interest Rate:** {r3.get('interest_rate_band', 'N/A')}")
+                st.write(f"**🎤 Tone:** {r3.get('message_tone', 'N/A')}")
+            
+            with camp_col2:
+                off_amt = r3.get('offer_amount')
+                st.write(f"**💵 Max Approved Offer:** ${off_amt:,.2f}" if off_amt else "**💵 Max Approved Offer:** N/A")
+                st.write(f"**✅ Recommended Action:** {r3.get('next_action', 'N/A')}")
+            
+            # عرض المزايا
+            st.subheader("🎁 Key Product Benefits")
+            for idx, benefit in enumerate(r3.get("key_benefits", []), 1):
+                st.markdown(f"**{idx}.** {benefit}")
+            
+            # جدول العرض التسويقي
+            st.subheader("Campaign Details")
+            campaign_data = {
+                "Attribute": [
+                    "Campaign Title",
+                    "Offer Type",
+                    "Interest Rate Band",
+                    "Max Offer Amount",
+                    "Message Tone",
+                    "Next Action",
+                ],
+                "Details": [
+                    r3.get("campaign_title", "N/A"),
+                    r3.get("offer_type", "N/A"),
+                    r3.get("interest_rate_band", "N/A"),
+                    f"${r3.get('offer_amount', 0):,.0f}" if r3.get('offer_amount') else "N/A",
+                    r3.get("message_tone", "N/A"),
+                    r3.get("next_action", "N/A"),
+                ]
+            }
+            st.dataframe(pd.DataFrame(campaign_data), use_container_width=True)
+
+        # ===== TAB 4: COMPREHENSIVE REPORT =====
+        with tab4:
+            st.subheader("📋 Complete Analysis Report")
+            
+            # Input Summary
+            st.write("**🔹 Customer Input Summary:**")
+            input_summary = {
+                "Parameter": [
+                    "Annual Income",
+                    "CIBIL Score",
+                    "Number of Dependents",
+                    "Education",
+                    "Self Employed",
+                    "Loan Amount",
+                    "Loan Term (months)",
+                    "Total Assets",
+                ],
+                "Value": [
+                    f"${income:,.0f}",
+                    f"{cibil}",
+                    f"{dependents}",
+                    education,
+                    "Yes" if self_employed else "No",
+                    f"${loan_amount:,.0f}",
+                    f"{loan_term}",
+                    f"${res_assets + comm_assets + lux_assets + bank_assets:,.0f}",
+                ]
+            }
+            st.dataframe(pd.DataFrame(input_summary), use_container_width=True)
+            
+            st.divider()
+            
+            # All Agents Output
+            st.write("**🔹 Agent 1 - Segmentation Results:**")
+            st.json(r1)
+            
+            st.write("**🔹 Agent 2 - Decision Results:**")
+            st.json(r2)
+            
+            st.write("**🔹 Agent 3 - Marketing Results:**")
+            st.json(r3)
+            
+            # Export Data
+            st.divider()
+            st.subheader("📥 Export Options")
+            export_col1, export_col2 = st.columns(2)
+            
+            with export_col1:
+                # CSV Export
+                csv_data = pd.DataFrame({
+                    "Agent": ["Segmentation", "Decision", "Marketing"],
+                    "Result": [str(r1), str(r2), str(r3)]
+                })
+                st.download_button(
+                    label="📥 Download as CSV",
+                    data=csv_data.to_csv(index=False),
+                    file_name="loan_analysis_report.csv",
+                    mime="text/csv"
+                )
+            
+            with export_col2:
+                # JSON Export
+                json_export = {
+                    "customer_input": customer_payload,
+                    "segmentation_agent": r1,
+                    "decision_agent": r2,
+                    "marketing_agent": r3,
+                }
+                st.download_button(
+                    label="📥 Download as JSON",
+                    data=pd.Series(json_export).to_json(),
+                    file_name="loan_analysis_report.json",
+                    mime="application/json"
+                )
