@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd
 
 class SegmentationAgent:
-    """Agent 1 — Customer Segmentation Agent"""
+    """Agent 1 — Customer Segmentation Agent (IMPROVED)"""
     def __init__(self, kmeans_model, scaler, risk_map, cluster_features):
         self.kmeans = kmeans_model
         self.scaler = scaler
         self.risk_map = risk_map
         self.cluster_features = cluster_features
 
-    def _build_feature_vector(self, customer: dict) -> np.ndarray:
+    def _build_feature_vector(self, customer: dict) -> tuple:
         income       = customer['income_annum']
         loan_amt     = customer['loan_amount']
         cibil        = customer['cibil_score']
@@ -38,13 +38,89 @@ class SegmentationAgent:
             'risk_pressure_index': risk_pressure,
             'affordability_score': affordability,
         }
-        return np.array([feature_values[f] for f in self.cluster_features]).reshape(1, -1)
+        return np.array([feature_values[f] for f in self.cluster_features]).reshape(1, -1), feature_values
+
+    def _calculate_financial_risk_score(self, feature_values: dict) -> tuple:
+        """
+        Calculate actual financial risk using indicators.
+        Returns (segment, risk_score_0_to_100)
+        """
+        loan_to_income = feature_values['loan_to_income_ratio']
+        debt_to_income = feature_values['debt_to_income']
+        risk_pressure = feature_values['risk_pressure_index']
+        net_worth = feature_values['net_worth']
+        cibil = feature_values['cibil_score']
+        
+        # Calculate risk score (0-100, higher = more risky)
+        risk_score = 0
+        
+        # 1. Loan-to-Income Risk (0-30 points)
+        if loan_to_income > 8:
+            risk_score += 30
+        elif loan_to_income > 6:
+            risk_score += 25
+        elif loan_to_income > 4:
+            risk_score += 15
+        elif loan_to_income > 2:
+            risk_score += 5
+        
+        # 2. Debt-to-Income Risk (0-25 points)
+        if debt_to_income > 3:
+            risk_score += 25
+        elif debt_to_income > 2:
+            risk_score += 20
+        elif debt_to_income > 1.5:
+            risk_score += 12
+        elif debt_to_income > 0.5:
+            risk_score += 5
+        
+        # 3. Net Worth Risk (0-25 points)
+        if net_worth < 0:
+            risk_score += 25
+        elif net_worth < 1000000:
+            risk_score += 20
+        elif net_worth < 5000000:
+            risk_score += 10
+        elif net_worth < 10000000:
+            risk_score += 5
+        
+        # 4. Credit Score Risk (0-15 points)
+        if cibil < 400:
+            risk_score += 15
+        elif cibil < 500:
+            risk_score += 12
+        elif cibil < 600:
+            risk_score += 8
+        elif cibil < 700:
+            risk_score += 3
+        
+        # 5. Risk Pressure Index (0-10 points)
+        if risk_pressure > 5:
+            risk_score += 10
+        elif risk_pressure > 2:
+            risk_score += 6
+        elif risk_pressure > 1:
+            risk_score += 3
+        
+        risk_score = min(100, max(0, risk_score))
+        
+        # Classify into segments based on financial risk
+        if risk_score < 25:
+            segment = 'Low Risk'
+        elif risk_score < 55:
+            segment = 'Medium Risk'
+        else:
+            segment = 'High Risk'
+        
+        return segment, risk_score
 
     def run(self, customer: dict) -> dict:
-        fv = self._build_feature_vector(customer)
+        fv, feature_values = self._build_feature_vector(customer)
         fv_scaled = self.scaler.transform(fv)
         cluster_raw = self.kmeans.predict(fv_scaled)[0]
-        segment = self.risk_map[cluster_raw]
+        
+        # IMPROVED: Use financial indicators for more accurate risk classification
+        segment, financial_risk_score = self._calculate_financial_risk_score(feature_values)
 
         lti = customer['loan_amount'] / max(customer['income_annum'], 1)
         cibil = customer['cibil_score']
@@ -55,8 +131,9 @@ class SegmentationAgent:
             'cluster_id': int(cluster_raw),
             'cibil_band': cibil_band,
             'loan_to_income_ratio': round(lti, 2),
+            'financial_risk_score': round(financial_risk_score, 1),
             'interpretation': (
-                f"Customer classified as {segment}. "
+                f"Customer classified as {segment} (Financial Risk: {financial_risk_score:.0f}/100). "
                 f"CIBIL score {cibil} ({cibil_band}). "
                 f"Loan-to-income ratio: {lti:.1f}× — "
                 f"{'within acceptable range' if lti < 5 else 'elevated — requires careful review'}."

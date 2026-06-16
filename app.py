@@ -82,7 +82,7 @@ if analyze:
         # ===== KPI DASHBOARD =====
         st.subheader("📊 Executive Summary - Key Metrics")
         
-        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+        kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5 = st.columns(5)
         
         with kpi_col1:
             decision_color = "🟢" if r2.get("decision") == "APPROVED" else "🔴"
@@ -94,9 +94,13 @@ if analyze:
         
         with kpi_col3:
             risk_score = r2.get('risk_score', 0)
-            st.metric("⚠️ Risk Score", f"{risk_score}/100")
+            st.metric("⚠️ Model Risk Score", f"{risk_score}/100")
         
         with kpi_col4:
+            financial_risk = r1.get('financial_risk_score', 0)
+            st.metric("💰 Financial Risk", f"{financial_risk}/100")
+        
+        with kpi_col5:
             st.metric("🏷️ Customer Segment", r1.get("segment", "N/A"))
 
         st.divider()
@@ -111,6 +115,7 @@ if analyze:
             st.subheader("Customer Segmentation Analysis")
             st.info(f"**📝 Interpretation:** {r1.get('interpretation', 'N/A')}")
             
+
             seg_col1, seg_col2, seg_col3 = st.columns(3)
             with seg_col1:
                 st.metric("Customer Segment", r1.get("segment", "N/A"))
@@ -127,12 +132,14 @@ if analyze:
                     "Cluster ID",
                     "CIBIL Score Band",
                     "Loan-to-Income Ratio",
+                    "Financial Risk Score",
                 ],
                 "Value": [
                     r1.get("segment", "N/A"),
                     r1.get("cluster_id", "N/A"),
                     r1.get("cibil_band", "N/A"),
                     f"{r1.get('loan_to_income_ratio', 0):.2f}",
+                    f"{r1.get('financial_risk_score', 0):.1f}/100",
                 ]
             }
             st.dataframe(pd.DataFrame(seg_data), use_container_width=True)
